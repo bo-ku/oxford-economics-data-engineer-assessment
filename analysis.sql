@@ -1,21 +1,23 @@
 -- Oxford Economics - Data Engineer Technical Assessment
 -- AAPL Stock Price Analysis
 --
--- Self-contained: DDL, idempotent load pattern, and all queries.
--- Runs against the SQLite database created by pipeline.py.
+-- Uses the CSV column names directly (Date, Open, Close, High, Low, Volume)
+-- so this can be pasted into SQLite Online after importing the CSV, or run
+-- against the pipeline's database after the CREATE TABLE below.
 
 
 -- DDL
--- PK on trade_date prevents duplicates. CHECK constraints catch bad data
--- at the database layer so we're not relying solely on upstream validation.
+-- PK on Date prevents duplicates. CHECK constraints catch bad data at the
+-- database layer so we're not relying solely on upstream validation.
+-- IF NOT EXISTS makes this safe to run whether or not the table already exists.
 
 CREATE TABLE IF NOT EXISTS aapl_stock_prices (
-    trade_date  TEXT    PRIMARY KEY,
-    open_price  REAL    NOT NULL CHECK(open_price > 0),
-    close_price REAL    NOT NULL CHECK(close_price > 0),
-    high_price  REAL    NOT NULL CHECK(high_price > 0),
-    low_price   REAL    NOT NULL CHECK(low_price > 0),
-    volume      INTEGER NOT NULL CHECK(volume > 0)
+    Date   TEXT    PRIMARY KEY,
+    Open   REAL    NOT NULL CHECK(Open > 0),
+    Close  REAL    NOT NULL CHECK(Close > 0),
+    High   REAL    NOT NULL CHECK(High > 0),
+    Low    REAL    NOT NULL CHECK(Low > 0),
+    Volume INTEGER NOT NULL CHECK(Volume > 0)
 );
 
 
@@ -24,18 +26,17 @@ CREATE TABLE IF NOT EXISTS aapl_stock_prices (
 -- duplicate rows. In Snowflake this would be a MERGE statement. The actual
 -- CSV -> SQLite load happens in pipeline.py; this is the pattern it uses:
 
--- INSERT OR REPLACE INTO aapl_stock_prices
---     (trade_date, open_price, close_price, high_price, low_price, volume)
+-- INSERT OR REPLACE INTO aapl_stock_prices (Date, Open, Close, High, Low, Volume)
 -- VALUES ('2025-08-15', 233.77, 231.37, 234.05, 229.12, 56038700);
 
 
 -- Q1: Largest price increase from Open to Close
 
 SELECT
-    trade_date,
-    open_price,
-    close_price,
-    ROUND(close_price - open_price, 2) AS price_change
+    Date,
+    Open,
+    Close,
+    ROUND(Close - Open, 2) AS price_change
 FROM aapl_stock_prices
 ORDER BY price_change DESC
 LIMIT 1;
@@ -44,10 +45,10 @@ LIMIT 1;
 -- Q2: Largest price decrease from Open to Close
 
 SELECT
-    trade_date,
-    open_price,
-    close_price,
-    ROUND(close_price - open_price, 2) AS price_change
+    Date,
+    Open,
+    Close,
+    ROUND(Close - Open, 2) AS price_change
 FROM aapl_stock_prices
 ORDER BY price_change ASC
 LIMIT 1;
@@ -61,10 +62,10 @@ LIMIT 1;
 
 WITH running_min AS (
     SELECT
-        trade_date,
-        close_price,
-        MIN(close_price) OVER (
-            ORDER BY trade_date
+        Date,
+        Close,
+        MIN(Close) OVER (
+            ORDER BY Date
             ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
         ) AS min_price_so_far
     FROM aapl_stock_prices
@@ -72,17 +73,17 @@ WITH running_min AS (
 
 profit_calc AS (
     SELECT
-        trade_date  AS sell_date,
-        close_price AS sell_price,
+        Date       AS sell_date,
+        Close      AS sell_price,
         min_price_so_far AS buy_price,
-        ROUND(close_price - min_price_so_far, 2) AS profit
+        ROUND(Close - min_price_so_far, 2) AS profit
     FROM running_min
 )
 
 SELECT
-    (SELECT trade_date FROM aapl_stock_prices
-     WHERE close_price = pc.buy_price AND trade_date <= pc.sell_date
-     ORDER BY trade_date LIMIT 1) AS buy_date,
+    (SELECT Date FROM aapl_stock_prices
+     WHERE Close = pc.buy_price AND Date <= pc.sell_date
+     ORDER BY Date LIMIT 1) AS buy_date,
     pc.sell_date,
     ROUND(pc.buy_price, 2)  AS buy_price,
     ROUND(pc.sell_price, 2) AS sell_price,
@@ -103,10 +104,10 @@ LIMIT 1;
 
 WITH daily_signals AS (
     SELECT
-        trade_date,
-        close_price,
+        Date,
+        Close,
         CASE
-            WHEN LEAD(close_price) OVER (ORDER BY trade_date) > close_price
+            WHEN LEAD(Close) OVER (ORDER BY Date) > Close
                 THEN 'WANT_HOLD'
             ELSE 'WANT_FLAT'
         END AS signal
@@ -115,10 +116,10 @@ WITH daily_signals AS (
 
 with_prev_signal AS (
     SELECT
-        trade_date,
-        close_price,
+        Date,
+        Close,
         signal,
-        LAG(signal, 1, 'WANT_FLAT') OVER (ORDER BY trade_date) AS prev_signal
+        LAG(signal, 1, 'WANT_FLAT') OVER (ORDER BY Date) AS prev_signal
     FROM daily_signals
 ),
 
@@ -127,13 +128,13 @@ actions AS (
     -- SELL on WANT_HOLD -> WANT_FLAT transitions
     -- Force-close on the last day if still holding
     SELECT
-        trade_date,
-        close_price,
+        Date,
+        Close,
         CASE
             WHEN prev_signal = 'WANT_FLAT' AND signal = 'WANT_HOLD' THEN 'BUY'
             WHEN prev_signal = 'WANT_HOLD' AND signal = 'WANT_FLAT' THEN 'SELL'
             WHEN prev_signal = 'WANT_HOLD' AND signal = 'WANT_HOLD'
-                 AND trade_date = (SELECT MAX(trade_date) FROM aapl_stock_prices)
+                 AND Date = (SELECT MAX(Date) FROM aapl_stock_prices)
                 THEN 'SELL'
             ELSE NULL
         END AS action
@@ -142,24 +143,24 @@ actions AS (
 
 trade_actions AS (
     SELECT
-        trade_date,
-        close_price,
+        Date,
+        Close,
         action,
         SUM(CASE WHEN action = 'BUY'  THEN 1 ELSE 0 END)
-            OVER (ORDER BY trade_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS buy_num,
+            OVER (ORDER BY Date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS buy_num,
         SUM(CASE WHEN action = 'SELL' THEN 1 ELSE 0 END)
-            OVER (ORDER BY trade_date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS sell_num
+            OVER (ORDER BY Date ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS sell_num
     FROM actions
     WHERE action IS NOT NULL
 ),
 
 buys AS (
-    SELECT trade_date AS buy_date, close_price AS buy_price, buy_num AS trade_num
+    SELECT Date AS buy_date, Close AS buy_price, buy_num AS trade_num
     FROM trade_actions WHERE action = 'BUY'
 ),
 
 sells AS (
-    SELECT trade_date AS sell_date, close_price AS sell_price, sell_num AS trade_num
+    SELECT Date AS sell_date, Close AS sell_price, sell_num AS trade_num
     FROM trade_actions WHERE action = 'SELL'
 )
 

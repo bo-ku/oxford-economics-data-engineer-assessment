@@ -37,12 +37,12 @@ def load_to_sqlite(df: pd.DataFrame, db_path: Path) -> None:
     with sqlite3.connect(str(db_path)) as conn:
         conn.execute("""
             CREATE TABLE IF NOT EXISTS aapl_stock_prices (
-                trade_date  TEXT PRIMARY KEY,
-                open_price  REAL NOT NULL,
-                close_price REAL NOT NULL,
-                high_price  REAL NOT NULL,
-                low_price   REAL NOT NULL,
-                volume      INTEGER NOT NULL
+                Date   TEXT    PRIMARY KEY,
+                Open   REAL    NOT NULL,
+                Close  REAL    NOT NULL,
+                High   REAL    NOT NULL,
+                Low    REAL    NOT NULL,
+                Volume INTEGER NOT NULL
             )
         """)
         # Originally wrote this as a for loop with iterrows() + execute() per row.
