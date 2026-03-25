@@ -1,0 +1,6 @@
+services:
+  pipeline:
+    build: .
+    volumes:
+      - ./output:/app/output
+      - ./data:/app/data
