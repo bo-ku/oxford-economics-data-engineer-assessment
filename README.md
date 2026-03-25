@@ -49,7 +49,20 @@ I included Docker not because the exercise requires it, but because environment 
 ```bash
 sqlite3 data/aapl.db < analysis.sql
 ```
-The `analysis.sql` file can also be pasted into [SQLite Online](https://sqliteonline.com/) after importing the CSV.
+The `analysis.sql` file can also be pasted into [SQLite Online](https://sqliteonline.com/) after importing the `aapl_stock_prices.csv` CSV.
+
+Screenshots of the examples with results:
+Q1:
+![Question1](https://github.com/user-attachments/assets/014a4b24-152c-4806-9da9-a64728e8771c)
+Q2:
+![Question2](https://github.com/user-attachments/assets/f77d9bf0-2275-4aab-a5c2-9f1846ae41f9)
+BQ1:
+![image](https://github.com/user-attachments/assets/085d713d-05c0-4433-8e11-0529bc22d8fd)
+BQ2:
+![image](https://github.com/user-attachments/assets/b5172d19-505d-4112-b58c-861dbd8f779f)
+
+
+
 
 ## Approach
 
