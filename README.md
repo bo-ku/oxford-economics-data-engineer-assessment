@@ -1,10 +1,10 @@
 # AAPL Stock Analysis Pipeline
 
-**Oxford Economics - Data Engineer Technical Assessment**
+**Data Engineer Technical Assessment**
 
 ## Overview
 
-My submission for the Oxford Economics Data Engineer assessment. I wanted to keep things simple and readable while showing how I think about this stuff in a production context -- clean code, well-commented SQL, and straightforward algorithms for the bonus questions instead of over-engineered abstractions.
+My submission for the Data Engineer assessment. I wanted to keep things simple and readable while showing how I think about this stuff in a production context -- clean code, well-commented SQL, and straightforward algorithms for the bonus questions instead of over-engineered abstractions.
 
 The pipeline ingests AAPL stock data, loads it into SQLite, answers all the assessment questions (including both bonus problems), and generates a lightweight interactive HTML report as a value-add for downstream review.
 
@@ -84,7 +84,7 @@ Other references: [Plotly docs](https://plotly.com/python/), [SQLite docs](https
 
 ## Stack Alignment
 
-Intentionally aligned with the Oxford Economics stack where it made sense:
+Intentionally aligned with the stack used where it made sense:
 - **Python + SQL** as core tools
 - **SQLite** as lightweight stand-in for Snowflake (same SQL patterns)
 - **Docker** for environment consistency (mirrors container-based deployments)
